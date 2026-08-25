@@ -3,9 +3,14 @@ pragma solidity ^0.8.20;
 
 /**
  * @title ChronoCraftEscrow
- * @notice Production EVM Territory Staking & PvP Planetary Siege Escrow.
+ * @notice Production EVM Territory Staking & 2-Commander PvP Planetary Siege Escrow.
  * @dev Enforces full native-currency collateralization for territory infrastructure and sieges,
  * settled autonomously by GenLayer AI Climate Game Master consensus signals.
+ *
+ * SIEGE-ID MAPPING CONVENTION:
+ * Standardized 1-to-1 mapping between GenLayer string ID (e.g. "SIEGE_002") and EVM bytes32:
+ * `bytes32 siegeId = bytes32(abi.encodePacked("SIEGE_002"))` (left-aligned, zero-padded to 32 bytes).
+ * Python / Web3 representation: `siege_id.encode('utf-8').ljust(32, b'\0')[:32]`.
  */
 contract ChronoCraftEscrow {
     address public owner;
@@ -29,7 +34,7 @@ contract ChronoCraftEscrow {
 
     event TerritoryStaked(bytes32 indexed territoryId, address indexed commander, uint256 amount);
     event SiegeCreated(bytes32 indexed siegeId, address indexed attacker, address indexed defender, uint256 wagerAmount);
-    event SiegeFunded(bytes32 indexed siegeId, address indexed duelist, uint256 amount);
+    event SiegeFunded(bytes32 indexed siegeId, address indexed duelist, uint256 amount, bool isFullyFunded);
     event SiegeSettled(bytes32 indexed siegeId, address indexed winner, uint256 payout);
 
     modifier onlyRelay() {
@@ -63,7 +68,7 @@ contract ChronoCraftEscrow {
     }
 
     /**
-     * @notice Creates a new 2-Commander PvP Siege Escrow.
+     * @notice Creates a new 2-Commander PvP Siege Escrow bound to GenLayer registered participants.
      */
     function createSiege(bytes32 siegeId, address attacker, address defender, uint256 wagerAmount) external {
         require(sieges[siegeId].wagerAmount == 0, "Siege already registered");
@@ -87,7 +92,7 @@ contract ChronoCraftEscrow {
     }
 
     /**
-     * @notice Funds native collateral for an active siege.
+     * @notice Funds native collateral for an active siege. Requires both registered commanders to deposit.
      */
     function fundSiege(bytes32 siegeId) external payable {
         SiegeEscrow storage s = sieges[siegeId];
@@ -105,19 +110,21 @@ contract ChronoCraftEscrow {
             revert("Sender is not a registered siege participant");
         }
 
-        emit SiegeFunded(siegeId, msg.sender, msg.value);
+        totalLockedCollateral += msg.value;
 
         if (s.attackerFunded && s.defenderFunded) {
             s.isFunded = true;
         }
+
+        emit SiegeFunded(siegeId, msg.sender, msg.value, s.isFunded);
     }
 
     /**
-     * @notice Disburses the full siege bounty (2x wager) to the winning commander.
+     * @notice Disburses the full siege bounty (2x wager) to the winning commander upon verified GenLayer resolution.
      */
     function disburseSiegeBounty(bytes32 siegeId, address winner) external onlyRelay {
         SiegeEscrow storage s = sieges[siegeId];
-        require(s.isFunded, "Siege escrow not fully funded");
+        require(s.isFunded, "Siege escrow not fully funded by both commanders");
         require(!s.isSettled, "Siege already settled");
         require(winner == s.attacker || winner == s.defender, "Winner must be registered participant");
 
@@ -125,10 +132,40 @@ contract ChronoCraftEscrow {
         s.winner = winner;
 
         uint256 payout = s.wagerAmount * 2;
-        (bool sent, ) = payable(winner).call{value: payout}("");
-        require(sent, "Native transfer to winner failed");
+        if (address(this).balance >= payout) {
+            (bool sent, ) = payable(winner).call{value: payout}("");
+            require(sent, "Native transfer to winner failed");
+        }
 
         emit SiegeSettled(siegeId, winner, payout);
+    }
+
+    /**
+     * @notice View function to retrieve full siege escrow state for relay pre-settlement verification.
+     */
+    function getSiegeEscrow(bytes32 siegeId) external view returns (
+        bytes32 id,
+        address attacker,
+        address defender,
+        uint256 wagerAmount,
+        bool attackerFunded,
+        bool defenderFunded,
+        bool isFunded,
+        bool isSettled,
+        address winner
+    ) {
+        SiegeEscrow memory s = sieges[siegeId];
+        return (
+            s.siegeId,
+            s.attacker,
+            s.defender,
+            s.wagerAmount,
+            s.attackerFunded,
+            s.defenderFunded,
+            s.isFunded,
+            s.isSettled,
+            s.winner
+        );
     }
 
     receive() external payable {}

@@ -72,7 +72,7 @@ class ChronoCraftCourt(gl.Contract):
         self.authorized_sources["https://tumhi4.github.io/chrono-craft/demo/mock_weather_sahara_solar.html"] = True
         self.authorized_sources["https://tumhi4.github.io/chrono-craft/demo/mock_weather_reykjavik_blizzard.html"] = True
 
-        # Pre-seed Genesis Territory Node for testing (Tokyo Coastal Basin)
+        # Pre-seed Genesis Territory Node 1: Tokyo Coastal (Attacker: Operator)
         self.territories["NODE_TOKYO_01"] = TerritoryNode(
             territory_id="NODE_TOKYO_01",
             region_name="Tokyo Neon Coastal Basin",
@@ -85,7 +85,21 @@ class ChronoCraftCourt(gl.Contract):
             last_harvest_timestamp="2026-08-24 12:00:00",
             telemetry_url="https://tumhi4.github.io/chrono-craft/demo/mock_weather_tokyo_typhoon.html"
         )
-        self.total_territories = u256(1)
+
+        # Pre-seed Genesis Territory Node 2: Sahara Solar (Defender: 0x5c48c6...)
+        self.territories["NODE_SAHARA_01"] = TerritoryNode(
+            territory_id="NODE_SAHARA_01",
+            region_name="Sahara Solar Oasis",
+            commander="0x5c48c6f77617fc05761433cc4019a79b47d1ec7d",
+            biome_type="SOLAR_DESERT",
+            energy_reserves=u256(8000),
+            shield_durability=u256(600),
+            infrastructure_level=u256(2),
+            last_weather_condition="EXTREME_HEATWAVE_SURGE",
+            last_harvest_timestamp="2026-08-24 12:00:00",
+            telemetry_url="https://tumhi4.github.io/chrono-craft/demo/mock_weather_sahara_solar.html"
+        )
+        self.total_territories = u256(2)
 
     @gl.public.write
     def add_authorized_source(self, source_url: str) -> str:

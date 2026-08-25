@@ -5,7 +5,7 @@
 ---
 
 ## 🔗 Verified Deployments & Links
-- **GenLayer Explorer Contract**: `[Deploying on Studio]`
+- **GenLayer Explorer Contract**: [`0x0CA60FA5A596fDB1811Eb3C511513C6421A8FD47`](https://explorer-studio.genlayer.com/address/0x0CA60FA5A596fDB1811Eb3C511513C6421A8FD47)
 - **GitHub Repository**: [`https://github.com/tumhi4/chrono-craft`](https://github.com/tumhi4/chrono-craft)
 - **Live DApp Dashboard**: [`https://chrono-craft.vercel.app/`](https://chrono-craft.vercel.app/)
 

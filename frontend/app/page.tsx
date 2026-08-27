@@ -34,7 +34,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 
-const CONTRACT_ADDRESS = '0x0CA60FA5A596fDB1811Eb3C511513C6421A8FD47';
+const CONTRACT_ADDRESS = '0x1298e88f6224C3Fa215aCDa1Ebdbc17dE81246a9';
 const GENLAYER_RPC = 'https://studio.genlayer.com/api';
 
 interface TerritoryData {

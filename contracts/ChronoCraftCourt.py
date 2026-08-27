@@ -245,7 +245,7 @@ class ChronoCraftCourt(gl.Contract):
 
         task = (
             "You are the Planetary Weather Oracle & Climate Architect for ChronoCraft on GenLayer.\n"
-            "Analyze real-world satellite weather telemetry and calculate energy yield multipliers.\n\n"
+            "Analyze real-world satellite weather telemetry and extract atmospheric metrics.\n\n"
             "Evaluate:\n"
             "1. clock_fresh: boolean (true if UTC Clock is valid and fresh)\n"
             "2. today_timestamp: UTC timestamp (YYYY-MM-DD HH:MM:SS format)\n"
@@ -254,12 +254,7 @@ class ChronoCraftCourt(gl.Contract):
             "5. temperature_celsius: float extracted temperature in Celsius\n"
             "6. wind_speed_kmh: float extracted wind speed in km/h\n"
             "7. solar_radiation_index: integer (0 - 1000 W/m2)\n"
-            "8. yield_multiplier_x100: integer multiplier (100 to 350) calculated from matching biome to climate:\n"
-            "   - HYDRO_COASTAL: Base 100 + (wind_speed * 2). In typhoons/heavy rain, yield surges up to 350 (3.5x)!\n"
-            "   - SOLAR_DESERT: Base 100 + (solar_radiation / 4). In extreme heatwaves, yield surges up to 300 (3.0x)!\n"
-            "   - GEOTHERMAL_CRYO: Base 100 + (abs(min(0, temp)) * 8). In severe blizzards, yield surges up to 320 (3.2x)!\n"
-            "   - BIO_CANOPY: Base 120 + humidity factor up to 250 (2.5x).\n"
-            "9. tactical_narrative: Concise 1-2 sentence planetary climate report explaining the energy output.\n\n"
+            "8. tactical_narrative: Concise 1-2 sentence planetary climate report.\n\n"
             "Output JSON format:\n"
             "{\n"
             '  "clock_fresh": true/false,\n'
@@ -269,7 +264,6 @@ class ChronoCraftCourt(gl.Contract):
             '  "temperature_celsius": <number>,\n'
             '  "wind_speed_kmh": <number>,\n'
             '  "solar_radiation_index": <number>,\n'
-            '  "yield_multiplier_x100": <number>,\n'
             '  "tactical_narrative": "<sentence>"\n'
             "}\n"
             "Respond ONLY with raw JSON."
@@ -277,15 +271,10 @@ class ChronoCraftCourt(gl.Contract):
 
         criteria = (
             "ChronoCraft Harvest Equivalence Rule:\n"
-            "1. Strict Fields (100% exact match required):\n"
-            "   - clock_fresh (boolean: true)\n"
-            "   - weather_feed_valid (boolean: true)\n"
-            "   - climate_condition (valid classification)\n"
-            "Independently audit telemetry. REJECT the leader proposal if:\n"
-            "(1) yield_multiplier_x100 is inflated beyond mathematical telemetry parameters,\n"
-            "(2) climate_condition contradicts telemetry data,\n"
-            "(3) weather_feed_valid is marked false or clock_fresh is marked false.\n"
-            "Output must be valid JSON matching the schema."
+            "1. clock_fresh (bool) and weather_feed_valid (bool) must be true.\n"
+            "2. climate_condition must accurately reflect dominant weather (e.g. SEVERE_TYPHOON_SURGE, EXTREME_HEATWAVE, BLIZZARD_SUBZERO).\n"
+            "3. temperature_celsius, wind_speed_kmh, and solar_radiation_index must match the scraped data (+-10% tolerance).\n"
+            "Accept the leader proposal if these criteria are satisfied."
         )
 
         consensus_result = gl.eq_principle.prompt_non_comparative(
@@ -317,14 +306,22 @@ class ChronoCraftCourt(gl.Contract):
         raw_temp = float(res_parsed.get("temperature_celsius", 20.0))
         raw_wind = float(res_parsed.get("wind_speed_kmh", 10.0))
         raw_solar = int(res_parsed.get("solar_radiation_index", 500))
-        raw_multiplier = int(res_parsed.get("yield_multiplier_x100", 100))
 
         assert -60.0 <= raw_temp <= 65.0, f"[ERR_BOUNDS_TEMP] Temperature {raw_temp}C out of bounds."
         assert 0.0 <= raw_wind <= 350.0, f"[ERR_BOUNDS_WIND] Wind speed {raw_wind} km/h out of bounds."
         assert 0 <= raw_solar <= 1500, f"[ERR_BOUNDS_SOLAR] Solar radiation {raw_solar} W/m2 out of bounds."
-        assert 100 <= raw_multiplier <= 350, f"[ERR_BOUNDS_MULT] Yield multiplier {raw_multiplier} out of bounds (100-350)."
 
-        multiplier_x100 = max(100, min(350, raw_multiplier))
+        # DETERMINISTIC PYTHON CALCULATION PREVENTS VALIDATOR ROTATION MISMATCHES
+        if node.biome_type == "HYDRO_COASTAL":
+            calc_mult = 100 + int(raw_wind * 2)
+        elif node.biome_type == "SOLAR_DESERT":
+            calc_mult = 100 + int(raw_solar // 4)
+        elif node.biome_type == "GEOTHERMAL_CRYO":
+            calc_mult = 100 + int(abs(min(0.0, raw_temp)) * 8)
+        else:
+            calc_mult = 120
+
+        multiplier_x100 = max(100, min(350, calc_mult))
         narrative = str(res_parsed.get("tactical_narrative", "Planetary atmospheric energy successfully collected."))
         timestamp_str = str(res_parsed.get("today_timestamp", "2026-08-27 12:00:00"))
 

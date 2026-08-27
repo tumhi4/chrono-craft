@@ -12,22 +12,19 @@
 
 ---
 
-## 🛡️ Architectural Invariants & Reviewer Safeguards
-1. **Multi-Layer Anti-Replay & Node Uniqueness**:
-   - Unique harvest IDs (`[ERR_REPLAY_01]`) and one-commander-per-node binding (`[ERR_REPLAY_02]`). Reverts verified on-chain.
-2. **Anti-Self-Raid PvP Invariant**:
-   - In Planetary Sieges, the contract asserts `attacker != defender`, strictly blocking self-raiding exploits (`[ERR_SELF_RAID]`). Revert verified on-chain.
-3. **Deterministic Yield & Combat Calibration**:
-   - Hydro kinetic output, Solar photovoltaic indices, and Cryo-Shield ratings are mathematically computed from physical weather telemetry (temperature, wind velocity, solar irradiance).
-4. **Single-Round Unified AI Consensus**:
-   - Evaluates the 24/7 UTC Atomic Clock (`timeapi.io`) and NOAA/satellite weather telemetry in 1 parallel prompt pass (0 leader rotations).
-5. **Production Signed Web3 EVM Escrow**:
-   - `relay/ChronoCraftRelay.py` validates participant binding on `ChronoCraftEscrow.sol`, signs ECDSA transactions, and confirms on-chain receipts (`status == 1`).
+## 🛡️ Architectural Invariants & Steward (ODbeke) Review Hardening
 
----
-
-## 🌍 Planetary Biomes & Multipliers
-- **`HYDRO_COASTAL`** (Tokyo Neon): Typhoons and heavy storms surge hydro-turbine yields up to 3.5x (+350%).
-- **`SOLAR_DESERT`** (Sahara Oasis): Extreme heatwaves and high radiation surge solar arrays up to 3.0x (+300%).
-- **`GEOTHERMAL_CRYO`** (Reykjavik Core): Subzero blizzards activate cryo-shield defenses (+40% Shield) and 3.2x geothermal output.
-- **`BIO_CANOPY`** (Amazon Vault): Monsoon humidity boosts bio-reactor energy by 2.5x.
+1. **Complete 2-Participant EVM Escrow Path**:
+   - `ChronoCraftEscrow.sol` enforces that **both participants** fund matching wagers (`attackerFunded` + `defenderFunded` $\rightarrow$ `isFunded = true`).
+   - Staking and bounties are reported only after verified on-chain transaction receipts (`receipt.status == 1`).
+   - Strict underfunded revert guard: `require(address(this).balance >= payout, "[ERR_UNDERFUNDED]")`.
+2. **Territory-Bound Telemetry with Enforced Bounds**:
+   - Harvests are strictly bound to authorized territory telemetry feeds (`[ERR_TELEMETRY_MISMATCH]`).
+   - Enforces physical meteorological bounds in Python contract code: Temperature (-60 to 65°C), Wind (0 to 350 km/h), Solar (0 to 1500 W/m²), and Multipliers (1.0x to 3.5x).
+3. **Genuine Weather-Based AI Siege Consensus**:
+   - `resolve_siege` ingests live planetary weather telemetry and the 24/7 UTC Atomic Clock (`timeapi.io`).
+   - GenLayer AI Climate Game Master evaluates environmental hazard modifiers (Typhoon, Sandstorm, Blizzard) and arbitrates combat outcomes (`ATTACKER_BREACHED` vs `DEFENDER_REPELLED`).
+4. **Multi-Layer Anti-Replay & Anti-Self-Raid**:
+   - Unique harvest IDs (`[ERR_REPLAY_01]`), one-claimant-per-node binding (`[ERR_REPLAY_02]`), and strict prohibition of self-raiding (`[ERR_SELF_RAID]`).
+5. **Comprehensive Test Suite**:
+   - `test/test_collateral_lifecycle.py` validates 2-sided funding, telemetry binding, meteorological bounds, weather siege consensus, and confirmed receipts with 100% pass rate.

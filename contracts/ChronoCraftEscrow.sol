@@ -132,10 +132,13 @@ contract ChronoCraftEscrow {
         s.winner = winner;
 
         uint256 payout = s.wagerAmount * 2;
-        if (address(this).balance >= payout) {
-            (bool sent, ) = payable(winner).call{value: payout}("");
-            require(sent, "Native transfer to winner failed");
-        }
+        require(address(this).balance >= payout, "[ERR_UNDERFUNDED] Escrow balance insufficient for siege payout");
+
+        s.isSettled = true;
+        s.winner = winner;
+
+        (bool sent, ) = payable(winner).call{value: payout}("");
+        require(sent, "Native transfer to winner failed");
 
         emit SiegeSettled(siegeId, winner, payout);
     }
